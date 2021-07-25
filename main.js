@@ -9,7 +9,7 @@ const canvas = window.canvas = document.getElementById('canvas')
 const parameters = {
     audio: false,
     video: true,
-    video: {width: 640, height: 480}
+    video: { width: 640, height: 480 }
 }
 
 const handleWebcamFeed = (stream) => {
