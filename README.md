@@ -1,3 +1,3 @@
 # AprilTag-Detector
 
-Deployed application [here](kamaljeetsahoo.github.io/AprilTag-Detector/)
+Deployed application [here](https://kamaljeetsahoo.github.io/AprilTag-Detector/)
