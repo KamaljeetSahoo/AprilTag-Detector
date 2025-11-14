@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "AprilTag Detector",
+    "slug": "apriltag-detector-native",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "jsEngine": "hermes",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "splash": {
+      "backgroundColor": "#020617"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Camera access is required for offline AprilTag detection.",
+        "NSMicrophoneUsageDescription": "Audio access is only requested when the system couples it with camera permission."
+      }
+    },
+    "android": {
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO"
+      ],
+      "softwareKeyboardLayoutMode": "pan"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermissionText": "Allow AprilTag Detector to access the camera so it can scan tags offline."
+        }
+      ]
+    ]
+  }
+}

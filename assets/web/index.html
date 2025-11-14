@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>AprilTag Detector</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body>
+  <main id="detector-root">
+    <video id="webcam_feed" playsinline muted autoplay></video>
+    <canvas id="canvas"></canvas>
+    <section id="status-bar">
+      <p id="status-text">Launching AprilTag detector…</p>
+      <p id="stats-text"></p>
+    </section>
+  </main>
+  <script>
+    window.addEventListener('error', function (event) {
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'error',
+          origin: 'webview-runtime',
+          message: event.message || 'Unknown runtime error'
+        }));
+      }
+    });
+  </script>
+  <script src="./apriltag_wasm.js"></script>
+  <script src="./apriltag.js"></script>
+  <script src="./main.js"></script>
+  <script src="./videoProcess.js" defer></script>
+</body>
+
+</html>

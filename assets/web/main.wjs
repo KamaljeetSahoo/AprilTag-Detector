@@ -1,0 +1,68 @@
+(() => {
+  const video = window.video = document.getElementById('webcam_feed');
+  const canvas = window.canvas = document.getElementById('canvas');
+  const statusText = document.getElementById('status-text');
+
+  const constraints = {
+    audio: false,
+    video: {
+      facingMode: 'environment',
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
+    }
+  };
+
+  function notifyNative(payload) {
+    if (!window.ReactNativeWebView) return;
+    try {
+      window.ReactNativeWebView.postMessage(JSON.stringify(payload));
+    } catch (err) {
+      console.warn('Unable to notify native layer', err);
+    }
+  }
+
+  function updateStatus(message) {
+    if (statusText) {
+      statusText.textContent = message;
+    }
+  }
+
+  async function initCamera() {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera API not available in this environment.');
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      window.stream = stream;
+      video.srcObject = stream;
+      await video.play();
+
+      document.dispatchEvent(new CustomEvent('detector:camera-ready'));
+      updateStatus('Camera stream locked. Detecting AprilTags…');
+      notifyNative({ type: 'status', message: 'camera-ready' });
+    } catch (error) {
+      console.error('Camera init failed', error);
+      updateStatus('Camera permission required to continue.');
+      notifyNative({
+        type: 'error',
+        origin: 'camera',
+        message: error.message
+      });
+    }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && video.srcObject) {
+      video.pause();
+    } else if (!document.hidden && video.srcObject) {
+      video.play().catch(() => {});
+    }
+  });
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initCamera();
+  } else {
+    document.addEventListener('DOMContentLoaded', initCamera);
+  }
+})();

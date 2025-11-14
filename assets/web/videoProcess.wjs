@@ -1,0 +1,170 @@
+(() => {
+  const statusText = document.getElementById('status-text');
+  const statsText = document.getElementById('stats-text');
+  const video = window.video || document.getElementById('webcam_feed');
+  const canvas = window.canvas || document.getElementById('canvas');
+  const DETECTION_POST_INTERVAL = 250;
+
+  let apriltag;
+  let detections = [];
+  let lastEmit = 0;
+  let lastFpsTick = performance.now();
+  let frames = 0;
+  let fps = 0;
+
+  function notifyNative(payload) {
+    if (!window.ReactNativeWebView) return;
+    try {
+      window.ReactNativeWebView.postMessage(JSON.stringify(payload));
+    } catch (err) {
+      console.warn('Unable to notify native layer', err);
+    }
+  }
+
+  function updateStatus(message) {
+    if (statusText) {
+      statusText.textContent = message;
+    }
+  }
+
+  function updateStatsText(latency) {
+    if (!statsText) return;
+    const ids = detections.map(det => det.id).join(', ');
+    statsText.textContent = [
+      `${detections.length} tag${detections.length === 1 ? '' : 's'}`,
+      `FPS ${fps.toFixed(1)}`,
+      latency !== undefined ? `Latency ${latency.toFixed(1)}ms` : null,
+      ids ? `IDs ${ids}` : null
+    ].filter(Boolean).join(' • ');
+  }
+
+  function bootstrapDetector() {
+    if (apriltag || !window.Apriltag) return;
+    apriltag = new window.Apriltag(() => {
+      updateStatus('Detector ready. Hold an AprilTag steady.');
+      notifyNative({ type: 'status', message: 'detector-ready' });
+      window.requestAnimationFrame(processFrame);
+    });
+  }
+
+  async function processFrame(timestamp) {
+    if (!video?.videoWidth || !video?.videoHeight) {
+      window.requestAnimationFrame(processFrame);
+      return;
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      updateStatus('Canvas unavailable.');
+      return;
+    }
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    try {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    } catch (err) {
+      console.warn('Unable to draw frame', err);
+      window.requestAnimationFrame(processFrame);
+      return;
+    }
+
+    let imageData;
+    try {
+      imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+    } catch (error) {
+      console.error('Canvas read error', error);
+      window.requestAnimationFrame(processFrame);
+      return;
+    }
+
+    const imageDataPixels = imageData.data;
+    const grayscalePixels = new Uint8Array(ctx.canvas.width * ctx.canvas.height);
+
+    for (let i = 0, j = 0; i < imageDataPixels.length; i += 4, j++) {
+      const grayscale = (imageDataPixels[i] + imageDataPixels[i + 1] + imageDataPixels[i + 2]) / 3;
+      grayscalePixels[j] = grayscale;
+      imageDataPixels[i] = grayscale;
+      imageDataPixels[i + 1] = grayscale;
+      imageDataPixels[i + 2] = grayscale;
+    }
+    ctx.putImageData(imageData, 0, 0);
+
+    const detectionStart = performance.now();
+    detections = await apriltag.detect(grayscalePixels, ctx.canvas.width, ctx.canvas.height);
+    const latency = performance.now() - detectionStart;
+
+    drawDetections(ctx);
+    updateStats(timestamp, latency);
+    maybeEmitDetections(timestamp, latency);
+
+    window.requestAnimationFrame(processFrame);
+  }
+
+  function drawDetections(ctx) {
+    detections.forEach((det) => {
+      ctx.beginPath();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#fb7185';
+      ctx.moveTo(det.corners[0].x, det.corners[0].y);
+      for (let cornerIndex = 1; cornerIndex < det.corners.length; cornerIndex++) {
+        ctx.lineTo(det.corners[cornerIndex].x, det.corners[cornerIndex].y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.font = 'bold 28px sans-serif';
+      ctx.fillStyle = '#38bdf8';
+      ctx.textAlign = 'center';
+      ctx.fillText(
+        `${det.id}`,
+        det.center.x,
+        det.center.y + 10
+      );
+    });
+  }
+
+  function updateStats(timestamp, latency) {
+    frames += 1;
+    if (timestamp - lastFpsTick >= 1000) {
+      fps = (frames * 1000) / (timestamp - lastFpsTick);
+      frames = 0;
+      lastFpsTick = timestamp;
+    }
+    updateStatsText(latency);
+  }
+
+  function maybeEmitDetections(timestamp, latency) {
+    if (!window.ReactNativeWebView || (timestamp - lastEmit) < DETECTION_POST_INTERVAL) {
+      return;
+    }
+    lastEmit = timestamp;
+    notifyNative({
+      type: 'detections',
+      payload: {
+        timestamp: Date.now(),
+        count: detections.length,
+        detections,
+        fps,
+        latencyMs: latency
+      }
+    });
+  }
+
+  document.addEventListener('detector:camera-ready', bootstrapDetector);
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    bootstrapDetector();
+  } else {
+    document.addEventListener('DOMContentLoaded', bootstrapDetector);
+  }
+
+  // Retry bootstrap if Apriltag is added later.
+  const wasmReadyInterval = setInterval(() => {
+    if (window.Apriltag && !apriltag) {
+      bootstrapDetector();
+      clearInterval(wasmReadyInterval);
+    }
+  }, 100);
+})();
