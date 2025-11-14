@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { CameraView as ExpoCameraView, useCameraPermissions } from 'expo-camera';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { Detection } from '../types';
-import { detectAprilTags } from '../utils/apriltagDetector';
+import WasmDetectorWebView, { WasmDetectorWebViewRef } from './WasmDetectorWebView';
 
 interface CameraViewProps {
   onDetections: (detections: Detection[], imageWidth?: number, imageHeight?: number) => void;
@@ -15,6 +15,8 @@ export default function CameraView({ onDetections, tagFamily = 'tag36h11' }: Cam
   const [isProcessing, setIsProcessing] = useState(false);
   const frameTimeoutRef = useRef<NodeJS.Timeout>();
   const processingRef = useRef(false);
+  const detectorRef = useRef<WasmDetectorWebViewRef | null>(null);
+  const [detectorReady, setDetectorReady] = useState(false);
 
   useEffect(() => {
     if (!permission?.granted) {
@@ -49,10 +51,11 @@ export default function CameraView({ onDetections, tagFamily = 'tag36h11' }: Cam
         exif: false,
       });
 
-      if (photo?.uri) {
-        // Process frame for AprilTag detection
-        const detections = await detectAprilTags(photo.uri, { tagFamily });
-        onDetections(detections, photo.width, photo.height);
+      if (photo?.uri && detectorReady) {
+        // Process frame using WASM detector
+        if (detectorRef.current) {
+          await detectorRef.current.processImage(photo.uri);
+        }
       }
     } catch (error) {
       // Silently handle errors (camera might be busy)
@@ -89,12 +92,25 @@ export default function CameraView({ onDetections, tagFamily = 'tag36h11' }: Cam
     );
   }
 
+  const handleDetectorReady = () => {
+    setDetectorReady(true);
+  };
+
+  const handleDetections = (detections: Detection[], width?: number, height?: number) => {
+    onDetections(detections, width, height);
+  };
+
   return (
     <View style={styles.container}>
       <ExpoCameraView
         ref={cameraRef}
         style={styles.camera}
         facing="back"
+      />
+      <WasmDetectorWebView
+        ref={detectorRef}
+        onReady={handleDetectorReady}
+        onDetections={handleDetections}
       />
       {isProcessing && (
         <View style={styles.processingIndicator}>

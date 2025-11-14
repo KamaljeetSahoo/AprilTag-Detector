@@ -1,13 +1,14 @@
 # AprilTag Detector - Expo React Native App
 
-A cross-platform mobile application for detecting AprilTags using Expo React Native. The app works completely offline and supports multiple AprilTag families.
+A cross-platform mobile application for detecting AprilTags using Expo React Native. **No native modules required!** The app uses pure JavaScript with WebAssembly via a hidden WebView. Works completely offline and supports multiple AprilTag families.
 
 ## Features
 
 - ✅ Cross-platform (iOS & Android)
+- ✅ **Pure JavaScript/React Native** - No native module implementation needed!
 - ✅ Completely offline operation
 - ✅ Vertical full-screen mobile UI
-- ✅ Real-time AprilTag detection
+- ✅ Real-time AprilTag detection using WebAssembly
 - ✅ Support for multiple tag families:
   - tag36h11 (default)
   - tag25h9
@@ -20,6 +21,15 @@ A cross-platform mobile application for detecting AprilTags using Expo React Nat
 - ✅ Detection overlay with bounding boxes and IDs
 - ✅ Detailed modal showing tag information
 - ✅ Tag family selector
+
+## How It Works
+
+The app uses a **hidden WebView** that runs the existing WASM-based AprilTag detector:
+1. Camera captures frames → React Native Camera component
+2. Frames converted to base64 → Sent to WebView
+3. WebView processes with WASM → Uses existing `apriltag.js` and `apriltag_wasm.js/wasm` files
+4. Detections sent back → React Native receives results via postMessage
+5. UI updates → Overlay shows detection boxes and details
 
 ## Prerequisites
 
@@ -45,71 +55,18 @@ npm start
    - iOS: Press `i` in the terminal or scan QR code with Expo Go
    - Android: Press `a` in the terminal or scan QR code with Expo Go
 
-## Native Module Setup
+## WASM Files Setup
 
-This app requires a native module for AprilTag detection. You'll need to implement the native module for iOS and Android.
+The app uses WebAssembly files for detection. These are already in your project:
+- `apriltag.js` - Worker script
+- `apriltag_wasm.js` - WASM loader
+- `apriltag_wasm.wasm` - Compiled WASM binary
 
-### iOS Implementation
+See `README_WASM.md` for details on how WASM files are loaded and bundled.
 
-Create `ios/ExpoAprilTag/ExpoAprilTagModule.swift`:
+## No Native Module Needed! 🎉
 
-```swift
-import ExpoModulesCore
-import Foundation
-
-public class ExpoAprilTagModule: Module {
-    public func definition() -> ModuleDefinition {
-        Name("ExpoAprilTag")
-        
-        AsyncFunction("detectTags") { (base64: String, options: [String: Any]) -> [String: Any] in
-            // Implement AprilTag detection using a native library
-            // Return array of detections
-            return []
-        }
-        
-        AsyncFunction("initializeDetector") { (options: [String: Any]) -> Void in
-            // Initialize the detector with options
-        }
-    }
-}
-```
-
-### Android Implementation
-
-Create `android/app/src/main/java/expo/modules/apriltag/ExpoAprilTagModule.kt`:
-
-```kotlin
-package expo.modules.apriltag
-
-import expo.modules.kotlin.modules.Module
-import expo.modules.kotlin.modules.ModuleDefinition
-
-class ExpoAprilTagModule : Module() {
-    override fun definition() = ModuleDefinition {
-        Name("ExpoAprilTag")
-        
-        AsyncFunction("detectTags") { base64: String, options: Map<String, Any> ->
-            // Implement AprilTag detection using a native library
-            // Return array of detections
-            emptyList<Map<String, Any>>()
-        }
-        
-        AsyncFunction("initializeDetector") { options: Map<String, Any> ->
-            // Initialize the detector with options
-        }
-    }
-}
-```
-
-### Using AprilTag Native Libraries
-
-For iOS, you can use:
-- [AprilTag](https://github.com/AprilRobotics/apriltag) C library compiled as a framework
-- [AprilTagSwift](https://github.com/your-repo/apriltag-swift) Swift wrapper
-
-For Android, you can use:
-- [AprilTag JNI](https://github.com/AprilRobotics/apriltag) C library via JNI
-- [AprilTag Android](https://github.com/your-repo/apriltag-android) Android wrapper
+This app uses **pure JavaScript with WebAssembly** - no native module implementation required! The WASM detector runs in a hidden WebView, making it completely cross-platform and easy to maintain.
 
 ## Project Structure
 
@@ -157,12 +114,18 @@ eas build --platform android
 
 ### Camera not working
 - Ensure camera permissions are granted in device settings
-- Check that the app has camera permission in `app.json`
+- Check that the app has camera permission in `app.config.js`
 
-### No detections
-- Ensure the native module is properly implemented
+### "Detector not ready" or no detections
+- Wait a few seconds for WASM to load (check console for initialization)
+- Ensure WASM files are accessible (see `README_WASM.md`)
 - Check that the correct tag family is selected
 - Verify the tag is in good lighting and focus
+
+### WASM files not loading
+- For development: Ensure files are accessible via HTTP or use Expo web support
+- For production: Bundle WASM files as assets (see `WASM_SETUP.md`)
+- Check WebView console for loading errors
 
 ### Build errors
 - Run `npx expo install --fix` to fix dependency versions

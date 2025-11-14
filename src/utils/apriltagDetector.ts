@@ -1,6 +1,5 @@
 import * as FileSystem from 'expo-file-system';
 import { Detection } from '../types';
-import { detectTags as nativeDetectTags } from '../native/AprilTagModule';
 
 export interface AprilTagDetectorOptions {
   tagFamily?: 'tag36h11' | 'tag25h9' | 'tag16h5' | 'tagCircle21h7' | 'tagCircle49h12' | 'tagCustom48h12' | 'tagStandard41h12' | 'tagStandard52h13';
@@ -20,24 +19,26 @@ const defaultOptions: AprilTagDetectorOptions = {
   maxDetections: 0, // 0 = unlimited
 };
 
+// This will be set by the WasmDetectorWebView component
+let detectorInstance: ((imageUri: string) => Promise<Detection[]>) | null = null;
+
+export function setDetectorInstance(detector: (imageUri: string) => Promise<Detection[]>) {
+  detectorInstance = detector;
+}
+
 export async function detectAprilTags(
   imageUri: string,
   options: AprilTagDetectorOptions = {}
 ): Promise<Detection[]> {
-  const opts = { ...defaultOptions, ...options };
+  if (!detectorInstance) {
+    console.warn('Detector not initialized yet');
+    return [];
+  }
 
   try {
-    // Read image as base64
-    const base64 = await FileSystem.readAsStringAsync(imageUri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    
-    // Use native module for detection
-    const result = await nativeDetectTags(base64, opts);
-    return parseDetections(result);
+    return await detectorInstance(imageUri);
   } catch (error) {
     console.error('Error detecting AprilTags:', error);
-    // Return empty array on error
     return [];
   }
 }
