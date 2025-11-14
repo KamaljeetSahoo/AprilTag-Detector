@@ -1,0 +1,9 @@
+PLACEHOLDER: Replace this with a 1284x2778 PNG image for your splash screen.
+
+This is the first screen users see when launching the app.
+
+Design tips:
+- Use your app logo/icon in the center
+- Keep it simple and clean
+- Match your brand colors
+- Consider both light and dark themes

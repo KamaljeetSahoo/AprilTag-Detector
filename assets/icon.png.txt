@@ -1,0 +1,8 @@
+PLACEHOLDER: Replace this with a 1024x1024 PNG image for your app icon.
+
+You can create one using:
+- Online tools: https://www.figma.com, https://www.canva.com
+- Image editors: Photoshop, GIMP, Sketch
+- Icon generators: https://icon.kitchen
+
+Recommended: Use a simple AprilTag or camera icon for the app.

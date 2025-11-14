@@ -1,0 +1,5 @@
+PLACEHOLDER: Replace this with a 48x48 PNG image for web favicon.
+
+This is used when running the app in a web browser.
+
+Can be a simplified version of your main icon.

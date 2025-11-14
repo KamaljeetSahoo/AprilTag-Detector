@@ -1,0 +1,8 @@
+PLACEHOLDER: Replace this with a 1024x1024 PNG image for Android adaptive icon.
+
+Android adaptive icons consist of foreground and background layers.
+
+Tips:
+- Keep important elements in the center
+- Use transparent background or simple solid color
+- Icon should work well at different sizes
